@@ -1,11 +1,13 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Low-level key/value persistence for the RIPENX app.
-/// Stores the dataset root identifier (SAF Document Tree URI on Android, or filesystem path on other platforms).
+/// Stores dataset root configuration and custom fruit & variety metadata.
 abstract final class StorageService {
   static const String _keyDatasetRootIdentifier = 'dataset_root_path';
   static const String _keyDatasetRootName = 'dataset_root_name';
   static const String _keyDatasetIsSaf = 'dataset_is_saf';
+  static const String _keyCustomFruits = 'custom_fruits';
+  static const String _prefixCustomVarieties = 'custom_varieties_';
 
   // ── Dataset root persistence ─────────────────────────────────────────────
 
@@ -51,5 +53,35 @@ abstract final class StorageService {
     await prefs.remove(_keyDatasetRootIdentifier);
     await prefs.remove(_keyDatasetRootName);
     await prefs.remove(_keyDatasetIsSaf);
+  }
+
+  // ── Custom fruits persistence ────────────────────────────────────────────
+
+  /// Persists the list of custom added fruit names.
+  static Future<void> saveCustomFruits(List<String> fruits) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_keyCustomFruits, fruits);
+  }
+
+  /// Loads the list of custom added fruit names.
+  static Future<List<String>> loadCustomFruits() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList(_keyCustomFruits) ?? [];
+  }
+
+  // ── Custom varieties persistence ─────────────────────────────────────────
+
+  /// Persists the list of custom added varieties for a specific [fruit].
+  static Future<void> saveCustomVarieties(String fruit, List<String> varieties) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_prefixCustomVarieties${fruit.trim().toLowerCase()}';
+    await prefs.setStringList(key, varieties);
+  }
+
+  /// Loads the list of custom added varieties for a specific [fruit].
+  static Future<List<String>> loadCustomVarieties(String fruit) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_prefixCustomVarieties${fruit.trim().toLowerCase()}';
+    return prefs.getStringList(key) ?? [];
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/dataset_service.dart';
+import '../services/storage_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ripenx_app_bar.dart';
 import 'camera_screen.dart';
@@ -25,15 +26,39 @@ class VarietyScreen extends StatefulWidget {
 }
 
 class _VarietyScreenState extends State<VarietyScreen> {
-  late final List<String> _varieties;
+  final List<String> _varieties = [];
   final TextEditingController _addController = TextEditingController();
   bool _isCreatingFolder = false;
 
   @override
   void initState() {
     super.initState();
+    _loadVarieties();
+  }
+
+  Future<void> _loadVarieties() async {
     final defaults = _defaultVarieties[widget.fruit.toLowerCase()] ?? [];
-    _varieties = List<String>.from(defaults);
+    final custom = await StorageService.loadCustomVarieties(widget.fruit);
+
+    final merged = <String>[];
+    for (final v in defaults) {
+      if (!merged.any((item) => item.toLowerCase() == v.toLowerCase())) {
+        merged.add(v);
+      }
+    }
+    for (final v in custom) {
+      if (!merged.any((item) => item.toLowerCase() == v.toLowerCase())) {
+        merged.add(v);
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _varieties
+          ..clear()
+          ..addAll(merged);
+      });
+    }
   }
 
   @override
@@ -89,9 +114,18 @@ class _VarietyScreenState extends State<VarietyScreen> {
       context: context,
       builder: (dialogContext) => _AddVarietyDialog(
         controller: _addController,
-        onAdd: (name) {
-          if (name.isNotEmpty && !_varieties.contains(name)) {
-            setState(() => _varieties.add(name));
+        onAdd: (name) async {
+          final trimmed = name.trim();
+          if (trimmed.isNotEmpty &&
+              !_varieties.any((v) => v.toLowerCase() == trimmed.toLowerCase())) {
+            setState(() => _varieties.add(trimmed));
+
+            // Persist custom varieties
+            final defaults = _defaultVarieties[widget.fruit.toLowerCase()] ?? [];
+            final customOnly = _varieties
+                .where((v) => !defaults.any((d) => d.toLowerCase() == v.toLowerCase()))
+                .toList();
+            await StorageService.saveCustomVarieties(widget.fruit, customOnly);
           }
         },
       ),
