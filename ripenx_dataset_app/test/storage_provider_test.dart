@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -271,6 +272,53 @@ void main() {
         await DatasetService.getNextPhotoFilename('Mango', 'Totapuri'),
         equals('photo_001.jpg'),
       );
+    });
+  });
+
+  group('FileSystemStorageProvider (iOS & Filesystem)', () {
+    late Directory tempRoot;
+    late FileSystemStorageProvider fsProvider;
+
+    setUp(() async {
+      tempRoot = await Directory.systemTemp.createTemp('fruit_test_');
+      fsProvider = FileSystemStorageProvider();
+    });
+
+    tearDown(() async {
+      if (await tempRoot.exists()) {
+        await tempRoot.delete(recursive: true);
+      }
+    });
+
+    test('1. hasValidAccess returns true for existing directory and false for missing', () async {
+      expect(await fsProvider.hasValidAccess(tempRoot.path), isTrue);
+      expect(await fsProvider.hasValidAccess('${tempRoot.path}/non_existent'), isFalse);
+    });
+
+    test('2. prepareVarietyFolder and saveImageBytes create nested hierarchy and write file', () async {
+      await fsProvider.prepareVarietyFolder(
+        rootIdentifier: tempRoot.path,
+        fruit: 'Mango',
+        variety: 'Banganapalli',
+      );
+
+      final dummyBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
+      final savedPath = await fsProvider.saveImageBytes(
+        rootIdentifier: tempRoot.path,
+        fruit: 'Mango',
+        variety: 'Banganapalli',
+        filename: 'photo_001.jpg',
+        bytes: dummyBytes,
+      );
+
+      expect(File(savedPath).existsSync(), isTrue);
+
+      final photos = await fsProvider.listPhotoFilenames(
+        rootIdentifier: tempRoot.path,
+        fruit: 'Mango',
+        variety: 'Banganapalli',
+      );
+      expect(photos, contains('photo_001.jpg'));
     });
   });
 }

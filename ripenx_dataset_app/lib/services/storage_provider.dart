@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:saf_stream/saf_stream.dart';
 import 'package:saf_util/saf_util.dart';
 
@@ -212,6 +213,19 @@ class SafStorageProvider implements DatasetStorageProvider {
 class FileSystemStorageProvider implements DatasetStorageProvider {
   @override
   Future<PickedDatasetRoot?> pickDatasetRoot() async {
+    if (Platform.isIOS) {
+      final docDir = await getApplicationDocumentsDirectory();
+      final fruitDatasetDir = Directory('${docDir.path}/FRUIT_DATASET');
+      if (!await fruitDatasetDir.exists()) {
+        await fruitDatasetDir.create(recursive: true);
+      }
+      return PickedDatasetRoot(
+        identifier: fruitDatasetDir.path,
+        name: 'FRUIT_DATASET',
+        isSaf: false,
+      );
+    }
+
     final path = await FilePicker.getDirectoryPath(
       dialogTitle: 'Select FRUIT_DATASET folder',
     );
